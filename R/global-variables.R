@@ -1,0 +1,12 @@
+utils::globalVariables(c(
+  "name",
+  "condition",
+  "intensity",
+  "all_missing",
+  "label",
+  "median_var",
+  "sd",
+  "row_mean",
+  "missingness",
+  "value"
+))

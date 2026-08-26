@@ -1,0 +1,192 @@
+---
+title: "repli"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{repli}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(repli)
+```
+
+# Introduction
+
+Missing values are common in mass spectrometry-based proteomics data and can complicate downstream statistical analysis. Imputation can be used to retain proteins with incomplete measurements, providing valuable biological isights that might otherwise be missed.
+
+`repli` implements replicate-based imputation for Missing At Random (MAR) data, where values are present for some but not all replicattes of an experimental condition. The method uses measurements from other replicates of the same protein-condition combination to determine the mean of the imputation distribution. A global standard deviation is derived from all protein-condition pairs in the dataset and used as the standard deviation of the imputation distribution.
+
+The package provides two workflows:
+
+- a data-frame workflow for users working with standard R data frames;
+- a `SummarizedExperiment` workflow for users working with proteomics analysis packages such as `DEP`.
+
+# Input data
+
+`repli` expects samples to follow a condition-replicate naming convention, with an underscore or period as separator:
+
+```text
+condition_replicate
+```
+
+For example:
+
+```text
+control_1
+control_2
+control_3
+treatment_1
+treatment_2
+treatment_3
+```
+
+The data should contain proteins in rows and samples in columns.
+
+# Data-frame workflow
+
+## Preparing the data
+
+First, prepare the data using `prepare_imputation_data()`.
+
+```{r}
+data(example_dataset)
+prepared <- prepare_imputation_data(example_dataset)
+```
+
+The resulting object contains the prepared data as well as the information required for imputation.
+
+```{r}
+names(prepared)
+```
+
+Protein-condition combinations are classified as:
+
+- `Valid`: no missing values;
+- `MAR`: some missing values;
+- `MNAR`: all missing values.
+
+## Performing replicate-based imputation
+
+The prepared data can be passed to `impute_replicate()`:
+
+```{r}
+set.seed(123)
+
+imputed <- impute_replicate(prepared)
+```
+
+The random seed can be set to make the stochastic imputation reproducible.
+
+# SummarizedExperiment workflow
+
+For users working with `SummarizedExperiment` objects, `impute_replicate_se()` combines preparation, imputation, and reconstruction into a single function.
+
+```{r, eval=FALSE}
+data(example_se)
+imputed_se <- impute_replicate_se(
+  example_se,
+  p = 0.05
+)
+```
+
+The returned object is a `SummarizedExperiment` with the imputed assay.
+
+```{r, eval=FALSE}
+class(imputed_se)
+```
+
+This workflow is intended to integrate directly with downstream proteomics workflows based on `DEP`.
+
+# Mixed MAR/MNAR imputation
+
+Replicate-based imputation is designed for MAR values. When a dataset contains both MAR and MNAR values, `impute_replicate_mixed_se()` can combine replicate-based imputation with an MNAR imputation method.
+
+For example, `MinProb` can be used for MNAR values:
+
+```{r, eval=FALSE}
+imputed_se <- impute_replicate_mixed_se(
+  example_se,
+  p = 0.05,
+  MNAR_method = "MinProb",
+  MNAR_args = list(q = 0.01)
+)
+```
+
+The workflow first performs replicate-based imputation for MAR values. MNAR values are then restored to their original missing state and passed to the selected MNAR imputation method.
+
+If no MNAR imputation is desired, use:
+
+```{r, eval=FALSE}
+imputed_se <- impute_replicate_mixed_se(
+  se,
+  p = 0.05,
+  MNAR_method = "none"
+)
+```
+
+# Choosing the variability parameter
+
+The `p` argument controls the fraction of observations with the highest standard deviations that are used to estimate the global standard deviation.
+
+For example:
+
+```{r, eval=FALSE}
+imputed_se <- impute_replicate_se(
+  example_se,
+  p = 0.05
+)
+```
+
+uses the top 5% of standard deviations to calculate the median global standard deviation.
+
+# Summary
+
+The main workflows provided by `repli` are:
+
+```text
+Data frame
+    |
+    v
+prepare_imputation_data()
+    |
+    v
+impute_replicate()
+    |
+    v
+Imputed data
+```
+
+and:
+
+```text
+SummarizedExperiment
+    |
+    v
+impute_replicate_se()
+    |
+    v
+Imputed SummarizedExperiment
+```
+
+For mixed missingness:
+
+```text
+SummarizedExperiment
+        |
+        v
+MAR --> replicate-based imputation
+        |
+        v
+MNAR --> selected DEP method
+        |
+        v
+Final imputed SummarizedExperiment
+```
