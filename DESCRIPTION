@@ -1,8 +1,8 @@
 Package: repli
 Title: Replicate-based Imputation for Randomly Missing Data in Quantitative Proteomics
-Version: 0.1.0
+Version: 0.99.0
 Authors@R: 
-    person("Dick", "Zijlmans", , "dickzijlmans@gmail.com", role = c("aut", "cre"), comment = c(ORCID = "0000-0003-1527-1834"))
+    person("Dick", "Zijlmans", email = "dickzijlmans@gmail.com", role = c("aut", "cre"), comment = c(ORCID = "0000-0003-1527-1834"))
 Description: 
     Implements replicate-based imputation for missing at random (MAR) values 
     in proteomics data. The method leverages existing measurements from other
@@ -23,6 +23,7 @@ Suggests:
     knitr,
     rmarkdown,
     testthat (>= 3.0.0)
+biocViews: Proteomics, MassSpectrometry, Software
 Config/roxygen2/version: 8.1.0
 Config/testthat/edition: 3
 VignetteBuilder: knitr
