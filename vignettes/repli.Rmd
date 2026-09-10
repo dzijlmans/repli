@@ -1,5 +1,5 @@
 ---
-title: "Replicate-based imputation for quantitative proteomics"
+title: "Getting started with replicate-based imputation"
 author: "Dick Zijlmans"
 date: "`r doc_date()`"
 package: "`r pkg_ver('repli')`"
@@ -19,24 +19,39 @@ knitr::opts_chunk$set(
 library(repli)
 ```
 
+This vignette provides a practical introduction to replicate-based imputation using `repli`. It introduces the concepts behind missing value imputation, demonstrates the basic workflow, and shows how `repli` can be integrated into a complete proteomics workflow using [SummarizedExperiment](https://www.bioconductor.org/packages/release/bioc/html/SummarizedExperiment.html) objects with [DEP](https://github.com/arnesmits/DEP).
+
 # Introduction
 
 Missing values are common in mass spectrometry-based proteomics data and can complicate downstream statistical analysis. Imputation can be used to retain proteins with incomplete measurements, providing valuable biological insights that might otherwise be missed.
 
-`repli` implements replicate-based imputation for Missing At Random (MAR) data, where values are present for some but not all replicates of an experimental condition. The method uses measurements from other replicates of the same protein-condition combination to determine the mean of the imputation distribution. A global standard deviation is derived from all protein-condition pairs in the dataset and used as the standard deviation of the imputation distribution.
+In proteomics, missing values are classified as **Missing At Random (MAR)**, when a protein is not detected in some replicates of a condition, or **Missing Not At Randomn (MNAR)**, where a protein is not detected in all replicates of a condition. For example, in the dataset below, Protein B would be classified as MAR and Proteins C would be classified as MNAR.
 
-The package provides two workflows:
+```text
+              Replicate 1   Replicate 2   Replicate 3
 
-- a data-frame workflow for users working with standard R data frames;
-- a `SummarizedExperiment` workflow for users working with proteomics analysis packages such as `DEP`.
+Protein A     20            21            19
+Protein B     15            NA            16
+Protein C     NA            NA            NA
+```
+
+`repli` implements **replicate-based imputation for MAR data**. Instead of estimating a missing value using similar proteins or a global dataset metric, the method uses available measurements from other replicates of the same protein. For each protein-condition combination with missing values, the mean of the available values is calculated to use for the imputation distribution. A global standard deviation is derived from the standard deviations of all protein-condition pairs in the dataset and used for the imputation distribution.
+
+In the example below, replicate 2 of Protein B would be imputed by sampling from an normal distribution with the mean set at 15.5 and a standard deviation set at 0.8535. For more details on how the global standard deviation is calculated, see the section near the end of the vignette.
+
+
+```text
+              Replicate 1   Replicate 2   Replicate 3   mean    sd
+
+Protein A     20            21            19            NA      1
+Protein B     15            NA            16            15.5    0.707
+Protein C     NA            NA            NA            NA      NA
+```
+
 
 # Input data
 
-`repli` expects samples to follow a condition-replicate naming convention, with an underscore or period as separator:
-
-```text
-condition_replicate
-```
+`repli` expects samples to follow a condition-replicate naming convention, with an underscore or period as separator.
 
 For example:
 
@@ -49,23 +64,24 @@ treatment_2
 treatment_3
 ```
 
-The data should contain proteins in rows and samples in columns.
+The data should contain proteins in rows and samples in columns, with log2-transformed protein abundances in the sample columns and missing values represented as `NA`.
 
 # Data-frame workflow
 
-## Preparing the data
-
-First, prepare the data using `prepare_imputation_data()`.
+First, prepare the data using `prepare_imputation_data()`. Here, we use a modified dataset from [Zijlmans et al. 2025](https://doi.org/10.1016/j.celrep.2025.115362) as example. The resulting object contains the prepared data as well as the information required for imputation.
 
 ```{r preparing data}
 data(example_dataset)
-prepared <- prepare_imputation_data(example_dataset)
-```
 
-The resulting object contains the prepared data as well as the information required for imputation.
+head(example_dataset)
 
-```{r inspect prepared data}
+prepared <- prepare_imputation_data(example_dataset, p = 0.05)
+
+#The output is a list consisting of the data is the appropriate format,
+# as well as a vector specifying the replicate columns and the global sd.
 names(prepared)
+
+head(prepared$data)
 ```
 
 Protein-condition combinations are classified as:
@@ -73,8 +89,6 @@ Protein-condition combinations are classified as:
 - `Valid`: no missing values;
 - `MAR`: some missing values;
 - `MNAR`: all missing values.
-
-## Performing replicate-based imputation
 
 The prepared data can be passed to `impute_replicate()`:
 
@@ -86,66 +100,98 @@ imputed <- impute_replicate(prepared)
 
 The random seed can be set to make the stochastic imputation reproducible.
 
-# SummarizedExperiment workflow
+## Calculating the global standard deviation
 
-For users working with `SummarizedExperiment` objects, `impute_replicate_se()` combines preparation, imputation, and reconstruction into a single function.
-
-```{r imputing SummarizedExperiment object}
-data(example_se)
-
-set.seed(123)
-
-imputed_se <- impute_replicate_se(
-  example_se,
-  p = 0.05
-)
-```
-
-The returned object is a `SummarizedExperiment` with the imputed assay.
-
-```{r inspect SE object}
-class(imputed_se)
-```
-
-This workflow is intended to integrate directly with downstream proteomics workflows based on `DEP`.
-
-# Mixed MAR/MNAR imputation
-
-Replicate-based imputation is designed for MAR values. When a dataset contains both MAR and MNAR values, `impute_replicate_mixed_se()` can combine replicate-based imputation with an MNAR imputation method.
-
-For example, `MinProb` can be used for MNAR values:
-
-```{r mixed imputation}
-set.seed(123)
-
-imputed_se <- impute_replicate_mixed_se(
-  example_se,
-  p = 0.05,
-  MNAR_method = "MinProb",
-  MNAR_args = list(q = 0.01)
-)
-```
-
-The workflow first performs replicate-based imputation for MAR values. MNAR values are then restored to their original missing state and passed to the selected MNAR imputation method.
-
-If no MNAR imputation is desired, set MNAR method to `none`.
-
-# Choosing the variability parameter
-
-The `p` argument controls the fraction of observations with the highest standard deviations that are used to estimate the global standard deviation.
+The `p` argument controls the proportion of observations with the highest standard deviations that are used to estimate the global standard deviation.
 
 For example:
 
 ```{r standard deviation parameter}
 set.seed(123)
 
-imputed_se <- impute_replicate_se(
-  example_se,
-  p = 0.05
-)
+data(example_se)
+
+imputed_se <- impute_replicate_se(example_se, p = 0.05)
 ```
 
-uses the top 5% of standard deviations to calculate the median global standard deviation.
+uses the top 5% of standard deviations across the dataset to calculate the median global standard deviation.
+
+# SummarizedExperiment workflow
+
+A [SummarizedExperiment](https://www.bioconductor.org/packages/release/bioc/html/SummarizedExperiment.html) is a data structure for storing quantitative biological data together with information about the samples and measured features. You can think of it as a container holding the protein abundance matrix, information about the samples and experimental conditions and replicate information. Many Bioconductor packages use this format, which means that using a `SummarizedExperiment` allows different packages to work together.
+
+For `SummarizedExperiment` objects, `impute_replicate_se()` combines preparation, imputation, and reconstruction into a single function. It requires a SummarizedExperiment as input and will return a SummarizedExperiment with the imputed assay as output.
+
+```{r imputing SummarizedExperiment object}
+data(example_se)
+
+class(example_se)
+
+set.seed(123)
+
+imputed_se <- impute_replicate_se(example_se, p = 0.05)
+
+class(imputed_se)
+
+#The imputed data can be accessed using `assay()`:
+head(SummarizedExperiment::assay(imputed_se))
+
+```
+
+This workflow is intended to integrate directly with downstream proteomics workflows based on `DEP`.
+
+## Mixed MAR/MNAR imputation
+
+Replicate-based imputation is designed for MAR values, as it requires at east some existing values for a condition. When a dataset contains both MAR and MNAR values, `impute_replicate_mixed_se()` can combine replicate-based imputation with an MNAR imputation method.
+
+For example, `MinProb` can be used for MNAR values:
+
+```{r mixed imputation}
+set.seed(123)
+
+imputed_se <- impute_replicate_mixed_se(example_se,
+                                        p = 0.05,
+                                        MNAR_method = "MinProb",
+                                        MNAR_args = list(q = 0.01))
+```
+
+The workflow first performs replicate-based imputation for MAR values. MNAR values are then restored to their original missing state and passed to the selected MNAR imputation method.
+
+If no MNAR imputation is desired, set MNAR method to `"none"`.
+
+# Using repli with DEP
+
+`repli` can be incorporated into proteomics workflows based on the [DEP](https://github.com/arnesmits/DEP) package.
+
+Here, `repli` replaces the imputation step while the other analysis steps can be performed using existing `DEP` functions. Since proteomics data almost always contain both MAR and MNAR missing values, using `impute_replicate_mixed_se()` is advised. Below is an example `DEP` workflow
+
+```{r integration with DEP}
+#Load and clean data
+data(UbiLength, package = "DEP")
+data <- UbiLength
+data <- dplyr::filter(data, Reverse != "+", Potential.contaminant != "+")
+
+#Prepare SummarizedExperiment
+data_unique <- DEP::make_unique(data, "Gene.names", "Protein.IDs", delim = ";")
+LFQ_columns <- grep("LFQ.", colnames(data_unique))
+data(UbiLength_ExpDesign, package = "DEP")
+experimental_design <- UbiLength_ExpDesign
+data_se <- DEP::make_se(data_unique, LFQ_columns, experimental_design)
+
+#Data filtering and normalization
+data_filt <- DEP::filter_missval(data_se, thr = 0)
+data_norm <- DEP::normalize_vsn(data_filt)
+
+#Imputation
+data_imp <- impute_replicate_mixed_se(data_norm,              # <-- use here
+                                      p = 0.05,
+                                      MNAR_method = "MinProb",
+                                      MNAR_args = list(q = 0.01))
+
+#Differential enrichment analysis
+data_diff <- DEP::test_diff(data_imp, type = "control", control = "Ctrl")
+dep <- DEP::add_rejections(data_diff, alpha = 0.05, lfc = log2(1.5))
+```
 
 # Session information
 
