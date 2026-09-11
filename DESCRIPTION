@@ -22,6 +22,7 @@ Suggests:
     DEP,
     knitr,
     rmarkdown,
+    BiocStyle,
     testthat (>= 3.0.0)
 biocViews: Proteomics, MassSpectrometry, Software
 Config/roxygen2/version: 8.1.0
