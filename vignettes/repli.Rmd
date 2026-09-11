@@ -37,7 +37,7 @@ Protein C     NA            NA            NA
 
 `repli` implements **replicate-based imputation for MAR data**. Instead of estimating a missing value using similar proteins or a global dataset metric, the method uses available measurements from other replicates of the same protein. For each protein-condition combination with missing values, the mean of the available values is calculated to use for the imputation distribution. A global standard deviation is derived from the standard deviations of all protein-condition pairs in the dataset and used for the imputation distribution.
 
-In the example below, replicate 2 of Protein B would be imputed by sampling from an normal distribution with the mean set at 15.5 and a standard deviation set at 0.8535. For more details on how the global standard deviation is calculated, see the section near the end of the vignette.
+In the example below, replicate 2 of Protein B would be imputed by sampling from a normal distribution with the mean set at 15.5 and a standard deviation set at 0.8535. For more details on how the global standard deviation is calculated, see [the section](#calculating-the-global-standard-deviation) below.
 
 
 ```text
@@ -142,7 +142,7 @@ This workflow is intended to integrate directly with downstream proteomics workf
 
 ## Mixed MAR/MNAR imputation
 
-Replicate-based imputation is designed for MAR values, as it requires at east some existing values for a condition. When a dataset contains both MAR and MNAR values, `impute_replicate_mixed_se()` can combine replicate-based imputation with an MNAR imputation method.
+Replicate-based imputation is designed for MAR values, as it requires at east some existing values for a condition. When a dataset contains both MAR and MNAR values, `impute_replicate_mixed_se()` can combine replicate-based imputation with a MNAR imputation method.
 
 For example, `MinProb` can be used for MNAR values:
 
@@ -163,7 +163,7 @@ If no MNAR imputation is desired, set MNAR method to `"none"`.
 
 `repli` can be incorporated into proteomics workflows based on the [DEP](https://github.com/arnesmits/DEP) package.
 
-Here, `repli` replaces the imputation step while the other analysis steps can be performed using existing `DEP` functions. Since proteomics data almost always contain both MAR and MNAR missing values, using `impute_replicate_mixed_se()` is advised. Below is an example `DEP` workflow
+Here, `repli` replaces the imputation step while the other analysis steps can be performed using existing `DEP` functions. Since proteomics data almost always contain both MAR and MNAR missing values, using `impute_replicate_mixed_se()` is advised. Below is an example `DEP` workflow.
 
 ```{r integration with DEP}
 #Load and clean data
