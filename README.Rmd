@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
 
 **Replicate-based imputation for mass spectrometry-based proteomics data.**
 
-`repli` implements replicate-based imputation for Missing At Radnom (MAR) values in proteomics data. The method uses measurements available in other biological or technical replicates of the same protein and condition to estimate the mean for imputation, while using a global standard deviation derived from the standard deviations of all protein-condition pairs in the dataset.
+`repli` implements replicate-based imputation for Missing At Random (MAR) values in proteomics data. The method uses measurements available in other biological or technical replicates of the same protein and condition to estimate the mean for imputation, while using a global standard deviation derived from the standard deviations of all protein-condition pairs in the dataset.
 
 The package supports both standard data frames and `SummarizedExperiment` objects for use in workflows based on [DEP](https://bioconductor.org/packages/DEP/).
 

@@ -37,9 +37,10 @@ imputed using the specified DEP method.
 }
 \description{
 Performs mixed imputation of missing values in a SummarizedExperiment object.
-Missing At Random (MAR) values are first imputed using replicate-based
-imputation, while Missing Not At Random (MNAR) values are subsequently
-imputed using a method from the DEP R package.
+Missing At Random (MAR) values are imputed using replicate-based imputation,
+while Missing Not At Random (MNAR) values are imputed using a specified
+method from the DEP R package. Both methods are applied independently to
+the original dataset, after which their results are combined.
 }
 \details{
 Protein-condition pairs are classified as MAR if there are missing
@@ -47,8 +48,12 @@ values for some but not all replicates. Protein-condition pairs are
 classified as MNAR if there are missing values for all of the replicates of
 a condition.
 
-When \code{MNAR_method = "none"}, MNAR values are left missing after
-replicate-based imputation of MAR values.
+#' MAR and MNAR imputation are performed independently on the original dataset.
+Missing MAR values are imputed using replicate-based imputation, while
+missing MNAR values are imputed using the specified DEP method. The results
+are subsequently combined, retaining all originally observed values.
+
+When \code{MNAR_method = "none"}, MNAR values are left missing.
 }
 \examples{
 data(example_se)

@@ -155,7 +155,7 @@ imputed_se <- impute_replicate_mixed_se(example_se,
                                         MNAR_args = list(q = 0.01))
 ```
 
-The workflow first performs replicate-based imputation for MAR values. MNAR values are then restored to their original missing state and passed to the selected MNAR imputation method.
+The function performs replicate-based MAR imputation and the selected MNAR imputation method independently on the original dataset. The resulting imputed values are then combined, with replicate-based imputations used for partially missing protein-condition pairs and MNAR imputations used for completely missing protein-condition pairs. Originally observed values are retained.
 
 If no MNAR imputation is desired, set MNAR method to `"none"`.
 
